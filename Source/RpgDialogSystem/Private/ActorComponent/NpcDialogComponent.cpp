@@ -365,6 +365,13 @@ void UNpcDialogComponent::PlaySequence(ULevelSequence* Sequence)
 		}
 		ALevelSequenceActor* SequenceActor; 
 		ActivePlayer = ULevelSequencePlayer::CreateLevelSequencePlayer(GetWorld(), Sequence, FMovieSceneSequencePlaybackSettings(), SequenceActor);
+		
+		if (!ActivePlayer)
+		{
+			EndDialog();
+			return;
+		}
+
 		BindSubtitleMarkerEvents();
 		FScriptDelegate OnStopDelegate;
 		OnStopDelegate.BindUFunction(this, "OnSequenceFinished");
