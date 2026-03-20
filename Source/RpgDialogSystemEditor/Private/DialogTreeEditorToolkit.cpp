@@ -15,6 +15,7 @@
 #include "Nodes/DialogGraphNode.h"
 #include "Nodes/PlayerChoiceNode.h"
 #include "GraphEditAction.h"
+#include "UObject/ObjectSaveContext.h"
 #include "Nodes/DialogEventNodeBase.h"
 #include "Nodes/DialogConditionsNode.h"
 #include "Editor/Transactor.h"
@@ -51,6 +52,7 @@ void FDialogTreeEditorToolkit::Initialize(UDialogTree* InDialogTree, const ETool
        EditorGraph->Schema = UDialogGraphSchema::StaticClass(); 
        EditorGraph->EditorToolkit = this;     
        GraphChangedDelegateHandle = EditorGraph->AddOnGraphChangedHandler(FOnGraphChanged::FDelegate::CreateSP(SharedThis(this), &FDialogTreeEditorToolkit::OnGraphChanged));
+       PreSaveDelegateHandle = FCoreUObjectDelegates::OnObjectPreSave.AddSP(SharedThis(this), &FDialogTreeEditorToolkit::OnObjectPreSave);
        EditorGraph->OnNodeDeletedDelegate.AddSP(SharedThis(this), &FDialogTreeEditorToolkit::OnNodeDeletedFromGraph);
        EditorGraph->OnSelectedNodeDelegate.AddSP(SharedThis(this), &FDialogTreeEditorToolkit::OnNodeSelected);   
        EditorGraph->bEditable = true;
@@ -431,8 +433,6 @@ void FDialogTreeEditorToolkit::SerializeEventNodes(TArray<UDialogEventNodeBase*>
 
 TArray<FGuid> FDialogTreeEditorToolkit::ParseConditionSubNodesOnNode(UEdGraphNode* Node, FName PinName)
 {
-
-
     TArray<FGuid> IdArray;
     //Gather Condition ID's
     UDialogEdGraphNodeBase* DialogNode = Cast<UDialogEdGraphNodeBase>(Node);
@@ -573,7 +573,7 @@ void FDialogTreeEditorToolkit::HandleCreateComment()
     const FGraphPanelSelectionSet& SelectedNodes = GraphEditor->GetSelectedNodes();
 
     // Convert cursor to graph space
-    const FVector2D GraphMousePosition = GraphEditor->GetPasteLocation();
+    const FVector2D GraphMousePosition = FVector2D(GraphEditor->GetPasteLocation());
 
     // No selection. simple comment
     if (SelectedNodes.Num() == 0)
@@ -635,6 +635,8 @@ void FDialogTreeEditorToolkit::HandleDuplicateNodes(FGraphPanelSelectionSet Node
 
 void FDialogTreeEditorToolkit::OnClose()
 {
+    FCoreUObjectDelegates::OnObjectPreSave.Remove(PreSaveDelegateHandle);
+
     if (EditorGraph)
     {
         EditorGraph->OnNodeDeletedDelegate.RemoveAll(this);
@@ -645,6 +647,14 @@ void FDialogTreeEditorToolkit::OnClose()
         {
             GEditor->UnregisterForUndo(this);
         }
+    }
+}
+
+void FDialogTreeEditorToolkit::OnObjectPreSave(UObject* Object, FObjectPreSaveContext SaveContext)
+{
+    if (Object == DialogTree)
+    {
+        UpdateDialogTreeData();
     }
 }
 
@@ -693,7 +703,11 @@ void FDialogGraphDetailsNotifyHook::NotifyPreChange(FProperty* PropertyAboutToCh
 
 void FDialogGraphDetailsNotifyHook::NotifyPostChange(const FPropertyChangedEvent& PropertyChangedEvent, FProperty* PropertyThatChanged)
 {
-
+    if (Graph)
+    {
+        FEdGraphEditAction Action;
+        Graph->NotifyGraphChanged(Action);
+    }
 }
 
 

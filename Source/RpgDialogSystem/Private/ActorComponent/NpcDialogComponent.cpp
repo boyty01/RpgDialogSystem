@@ -5,6 +5,7 @@
 #include "Interface/DialogInterface.h"
 #include "Interface/DialogInventoryInterface.h"
 #include "Interface/DialogQuestInterface.h"
+#include "Interface/DialogReputationInterface.h"
 #include "LevelSequencePlayer.h"
 #include "LevelSequenceActor.h"
 #include "Subsystem/DialogManagerSubsystem.h"
@@ -123,6 +124,8 @@ bool UNpcDialogComponent::CanStartADialog()
 	return SelectedSequenceId.IsValid();
 }
 
+
+
 bool UNpcDialogComponent::CheckDialogCondition(const FDialogCondition& Condition)
 {
 	FString CType;
@@ -138,6 +141,10 @@ bool UNpcDialogComponent::CheckDialogCondition(const FDialogCondition& Condition
 	
 	case EDialogSystemTarget::STATE : 
 		return CheckStateCondition(Condition);
+
+	case EDialogSystemTarget::REPUTATION :
+		return CheckReputationCondition(Condition);
+
 	default:
 		break;
 	}
@@ -212,6 +219,30 @@ void UNpcDialogComponent::StopCurrentSequence(const bool bCallSequenceFinished)
 
 		if (bCallSequenceFinished) ActivePlayer->OnFinished.Broadcast();
 	}
+}
+
+void UNpcDialogComponent::ChangeDialogTree(UDialogTree* NewDialogTree, const bool bCopyMatchingStates)
+{
+	if (!NewDialogTree)
+	{
+		DialogTree = nullptr;
+		DialogStateModifiers.Empty();
+		return;
+	}
+
+	TMap<FName, bool> OldDialogStates = MoveTemp(DialogStateModifiers);
+
+	DialogStateModifiers.Empty(NewDialogTree->DialogStates.Num());
+
+	for (const TPair<FName, bool>& Pair : NewDialogTree->DialogStates)
+	{
+		// Use the old value if it exists and copying is enabled; otherwise, use the new default
+		const bool* ExistingValue = bCopyMatchingStates ? OldDialogStates.Find(Pair.Key) : nullptr;
+		DialogStateModifiers.Add(Pair.Key, ExistingValue ? *ExistingValue : Pair.Value);
+	}
+
+	DialogTree = NewDialogTree;
+
 }
 
 // Called when the game starts
@@ -327,7 +358,7 @@ void UNpcDialogComponent::OnSubtitleMarkerHit(const FString& MarkerLabel)
 {
 	CurrentSubtitleIndex++;
 
-	if (MarkerLabel.ToUpper() != "SUB") // not a subtitle marker
+	if (!MarkerLabel.ToUpper().StartsWith(TEXT("SUB"))) // not a subtitle marker
 	{
 		return;
 	}
@@ -335,7 +366,10 @@ void UNpcDialogComponent::OnSubtitleMarkerHit(const FString& MarkerLabel)
 	UDialogManagerSubsystem* Manager = GetWorld()->GetSubsystem<UDialogManagerSubsystem>();
 	if (Manager)
 	{
-		Manager->DialogSubtitleMarkerHit(CurrentSubtitleIndex);
+		FString L = "";
+		FString R = "";
+		MarkerLabel.Split(TEXT(":"), &L, &R);
+		Manager->DialogSubtitleMarkerHit(CurrentSubtitleIndex, R);
 	}
 	return;
 }
@@ -377,7 +411,7 @@ void UNpcDialogComponent::PlaySequence(ULevelSequence* Sequence)
 		OnStopDelegate.BindUFunction(this, "OnSequenceFinished");
 		ActivePlayer->OnStop.AddUnique(OnStopDelegate);
 	//	ActivePlayer->OnFinished.AddUnique(OnStopDelegate);
-		FMovieSceneSequencePlaybackSettings Settings; Settings.FinishCompletionStateOverride = EMovieSceneCompletionModeOverride::ForceRestoreState;
+		FMovieSceneSequencePlaybackSettings Settings; // Settings.FinishCompletionStateOverride = EMovieSceneCompletionModeOverride::ForceRestoreState;
 		ActivePlayer->SetPlaybackSettings(Settings);
 		ActivePlayer->Play();
 	}
@@ -429,15 +463,25 @@ TArray<FDialogChoice> UNpcDialogComponent::GetValidDialogChoices(FNpcDialogSeque
 
 	for (auto& ChoiceId : Node.DialogChoices)
 	{
-		check(DialogTree->DialogChoices.Contains(ChoiceId));
+		FDialogChoice* ChoicePtr = DialogTree->DialogChoices.Find(ChoiceId);
+		if (!ChoicePtr)
+		{
+			UE_LOG(LogDialogSystem, Warning, TEXT("GetValidDialogChoices: DialogChoice GUID not found in DialogTree, skipping."));
+			continue;
+		}
 
-		FDialogChoice& Choice = *DialogTree->DialogChoices.Find(ChoiceId);
+		FDialogChoice& Choice = *ChoicePtr;
 		bool Qualified = true;
 		for (auto& ConditionId : Choice.QualifyingConditions)
 		{
-			check(DialogTree->Conditions.Contains(ConditionId));
+			FDialogCondition* ConditionPtr = DialogTree->Conditions.Find(ConditionId);
+			if (!ConditionPtr)
+			{
+				UE_LOG(LogDialogSystem, Warning, TEXT("GetValidDialogChoices: DialogCondition GUID not found in DialogTree, skipping condition."));
+				continue;
+			}
 
-			FDialogCondition& Condition = *DialogTree->Conditions.Find(ConditionId);
+			FDialogCondition& Condition = *ConditionPtr;
 			if (!CheckDialogCondition(Condition))
 			{
 				Qualified = false;
@@ -510,12 +554,36 @@ bool UNpcDialogComponent::CheckQuestCondition(const FDialogCondition& Condition)
 	
 }
 
+bool UNpcDialogComponent::CheckReputationCondition(const FDialogCondition& Condition)
+{
+	if (!DialogTree) return false;
+
+	APawn* PlayerPawn = nullptr;
+	if (!GetPlayerPawn(PlayerPawn) || !PlayerPawn->Implements<UDialogReputationInterface>())
+		return false;
+
+	int32 Reputation = IDialogReputationInterface::Execute_GetReputation(PlayerPawn, Condition.DataId);
+
+	if (Condition.ConditionType == EDialogConditionRequirementType::AT_LEAST) 
+	{
+		return Reputation >= Condition.Value;
+	}
+
+	if (Condition.ConditionType == EDialogConditionRequirementType::LESS_THAN)
+	{
+		return Reputation < Condition.Value;
+	}
+
+	return false;
+}
+
+
 bool UNpcDialogComponent::CheckStateCondition(const FDialogCondition& Condition)
 {
 	if (!DialogTree || !DialogStateModifiers.Contains(Condition.DataId)) return false;
 
 	bool State = *DialogStateModifiers.Find(Condition.DataId);
-
+	UE_LOG(LogTemp, Warning, TEXT("State midifioner Condition: %s is %s"), *Condition.DataId.ToString(), State ? TEXT("TRUE") : TEXT("FALSE"));
 	return Condition.bNegate ? !State : State;
 }
 

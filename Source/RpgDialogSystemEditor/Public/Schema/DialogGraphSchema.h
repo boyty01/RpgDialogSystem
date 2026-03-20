@@ -17,6 +17,8 @@
 #include "Nodes/DialogStateEventNode.h"
 #include "Nodes/DialogConditionsNode.h"
 #include "Nodes/DialogEventNodeBase.h"
+#include "Nodes/DialogReputationEventNode.h"
+#include "Nodes/ReputationConditionNode.h"
 #include "Nodes/DialogCustomEventNode.h"
 #include "Nodes/DialogCommentNode.h"
 #include "DataAsset/DialogTree.h"
@@ -362,6 +364,34 @@ public:
     }
 };
 
+
+class FDialogGraphSchemaAction_NewReputationConditionsNode : public FEdGraphSchemaAction
+{
+public:
+    FDialogGraphSchemaAction_NewReputationConditionsNode()
+        : FEdGraphSchemaAction(
+            FText::FromString("Conditions"),
+            FText::FromString("Reputation Condition"),
+            FText::FromString("Adds a Reputation condition node"),
+            0)
+    {
+    }
+
+
+    virtual UEdGraphNode* PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, bool bSelectNewNode) override
+    {
+        const UDialogGraphSchema* Schema = CastChecked<UDialogGraphSchema>(ParentGraph->GetSchema());
+        UReputationConditionNode* NewNode = Schema->CreateConditionNode<UReputationConditionNode>(nullptr, ParentGraph, FDialogGraphNodeData(), Location, FText::FromString("Required Conditions"), FGuid::NewGuid(), true);
+
+        if (bSelectNewNode && NewNode)
+        {
+        }
+
+        NewNode->GetGraph()->NotifyGraphChanged();
+        return NewNode;
+    }
+};
+
 class FDialogGraphSchemaAction_NewStateConditionsNode : public FEdGraphSchemaAction
 {
 public:
@@ -426,7 +456,7 @@ public:
         : FEdGraphSchemaAction(
             FText::FromString("Events"),
             FText::FromString("Quest Event"),
-            FText::FromString("Adds an Quest event node"),
+            FText::FromString("Adds a Quest event node"),
             0)
     {
     }
@@ -436,6 +466,34 @@ public:
     {
         const UDialogGraphSchema* Schema = CastChecked<UDialogGraphSchema>(ParentGraph->GetSchema());
         UDialogQuestEventNode* NewNode = Schema->CreateEventNode<UDialogQuestEventNode>(nullptr, ParentGraph, FDialogGraphNodeData(), Location, FText::FromString("Required Conditions"), FGuid::NewGuid(), true);
+
+        if (bSelectNewNode && NewNode)
+        {
+        }
+
+        NewNode->GetGraph()->NotifyGraphChanged();
+        return NewNode;
+    }
+};
+
+
+class FDialogGraphSchemaAction_NewReputationEventNode : public FEdGraphSchemaAction
+{
+public:
+    FDialogGraphSchemaAction_NewReputationEventNode()
+        : FEdGraphSchemaAction(
+            FText::FromString("Events"),
+            FText::FromString("Reputation Event"),
+            FText::FromString("Adds a Reputation event node"),
+            0)
+    {
+    }
+
+
+    virtual UEdGraphNode* PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, bool bSelectNewNode) override
+    {
+        const UDialogGraphSchema* Schema = CastChecked<UDialogGraphSchema>(ParentGraph->GetSchema());
+        UDialogReputationEventNode* NewNode = Schema->CreateEventNode<UDialogReputationEventNode>(nullptr, ParentGraph, FDialogGraphNodeData(), Location, FText::FromString("Required Conditions"), FGuid::NewGuid(), true);
 
         if (bSelectNewNode && NewNode)
         {

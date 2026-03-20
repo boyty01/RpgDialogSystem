@@ -13,11 +13,13 @@ DECLARE_LOG_CATEGORY_EXTERN(LogDialogManagerSubsystem, Log, All);
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnNewSequence, const FNpcDialogSequence&, Sequence);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnSequenceFinished, const FNpcDialogSequence&, Sequence);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnSubtitleMarkerHit, const int, Index);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnSubtitleMarkerHit, const int, Index, const FString, Speaker);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDialogEnded);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDialogStarted);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnSubtitleDialogPlay, USoundBase*, SoundFile);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDialogFailedToStart, const FString&, Reason);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnStandaloneSequenceTriggered, const FStandaloneDialogSequence&, SequenceData);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnStandaloneSequenceEnded);
 /**
  * 
  */
@@ -32,9 +34,13 @@ public:
 	UFUNCTION()
 	void DialogFailedToStart(AActor* InvokingActor, const FString& Reason);
 
-
+	UPROPERTY(BlueprintAssignable, Category = "Delegates")
+	FOnStandaloneSequenceTriggered OnStandaloneSequenceTriggered;
+	
 	//Delegate for when a dialog fails to start for any reason.
 	UPROPERTY(BlueprintAssignable, Category = "Delegates")
+	FOnStandaloneSequenceEnded OnStandaloneSequenceEnded;
+
 	FOnDialogFailedToStart OnDialogFailedToStart;
 
 	UPROPERTY(BlueprintAssignable, BlueprintCallable, Category = "Delegates")
@@ -98,10 +104,22 @@ public:
 	AActor* GetActiveDialogNPC() { return ActiveDialogNPC; };
 
 	UFUNCTION(BlueprintCallable, Category = "Dialog Manager")
-	void DialogSubtitleMarkerHit(const int index) 
+	void DialogSubtitleMarkerHit(const int index, const FString Speaker) 
 	{
 		CurrentSubtitleIndex = index;
-		OnSubtitleMarkerHit.Broadcast(index);
+		OnSubtitleMarkerHit.Broadcast(index, Speaker);
+	}
+
+	UFUNCTION(BlueprintCallable, Category="Standalone Event")
+	void TriggerStandaloneDialogSequence(const FStandaloneDialogSequence& SequenceData)
+	{
+		OnStandaloneSequenceTriggered.Broadcast(SequenceData);
+	}
+
+	UFUNCTION(BlueprintCallable, Category = "Standalone Event")
+	void StandaloneDialogSequenceEnded()
+	{
+		OnStandaloneSequenceEnded.Broadcast();
 	}
 
 private:
@@ -111,6 +129,7 @@ private:
 	void HandleInventoryEventData(APawn* TargetPawn, const FDialogEventData& Event);
 	void HandleStateEventData(const FDialogEventData& Event);
 	void HandleCustomEventData(AActor* InvokingActor, const FDialogEventData& Event);	
+	void HandleReputationEventData(AActor* TargetPawn, const FDialogEventData& Event);
 
 	void GiveQuest(APawn* TargetPawn, const FName Quest);
 	void RemoveQuest(APawn* TargetPawn, const FName Quest);
@@ -119,6 +138,7 @@ private:
 	void RemoveItems(APawn* TargetPawn, const FName ItemId, const int NumItems);
 	void ProgressObjective(APawn* TargetPawn, const FName EventId);
 	void FailQuest(APawn* TargetPawn, const FName Quest);
+
 
 	bool bDialogIsActive{ false };
 	bool GetPlayerPawnInterfaced(APawn*& OutPawn);

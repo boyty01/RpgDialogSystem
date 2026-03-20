@@ -40,6 +40,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Dialog")
 	bool CheckDialogCondition(const FDialogCondition& Condition);
 
+
 	UFUNCTION()
 	void OnSequenceFinished();
 
@@ -56,6 +57,11 @@ public:
 	//immediately stop a sequence that's currently playing, optionally calling the SequenceFinished as if it finished naturally. if false, no notify is sent that the sequence ended.
 	UFUNCTION(BlueprintCallable, Category ="Dialog")
 	void StopCurrentSequence(const bool bCallSequenceFinished);
+
+
+	// Swap out the current dialog tree for a new one. Optionally copy over any matching dialog states from the old tree to the new one.
+	UFUNCTION(BlueprintCallable, Category ="Dialog")
+	void ChangeDialogTree(UDialogTree* NewDialogTree, const bool bCopyMatchingStates = false);
 
 	UDialogTree* GetDialogTree() { return DialogTree; };
 protected:
@@ -130,7 +136,7 @@ private:
 	bool CheckInventoryCondition(const FDialogCondition& Condition);
 	bool CheckQuestCondition(const FDialogCondition& Condition);
 	bool CheckStateCondition(const FDialogCondition& Condition);
-
+	bool CheckReputationCondition(const FDialogCondition& Condition);
 public:	
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;

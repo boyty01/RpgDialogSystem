@@ -33,6 +33,10 @@ public:
 	// Should be called to initialise the script in native code. This calls ExecuteScript for blueprint instance logic.
 	void NativeExecute(AActor* Instigator);
 
+	// Blueprint version of NativeExecute for scripts spawned in blueprint flows. Uncommon, but exposed for edge cases.
+	UFUNCTION(BlueprintCallable, Category = "Script")
+	void InitBlueprint(AActor* Instigator) { NativeExecute(Instigator); };
+
 	// called by NativeExecute to run the blueprint logic for this script event.
 	UFUNCTION(BlueprintImplementableEvent, Category="Script")
 	void ExecuteScript(AActor* Instigator, UWorld* World);

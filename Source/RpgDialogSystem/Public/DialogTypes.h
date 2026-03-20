@@ -28,7 +28,8 @@ enum class EDialogActionType : uint8
 	ADD_ITEM,
 	REMOVE_ITEM,
 	SET_STATE,
-	CUSTOM_SCRIPT
+	CUSTOM_SCRIPT,
+	MODIFY_REPUTATION
 };
 
 
@@ -38,7 +39,8 @@ enum class EDialogSystemTarget : uint8
 	QUEST,
 	INVENTORY,
 	STATE,
-	SCRIPT
+	SCRIPT,
+	REPUTATION
 };
 
 
@@ -48,7 +50,9 @@ enum class EDialogConditionRequirementType : uint8
 	HAVE,
 	IS_COMPLETE,
 	HAS_COMPLETED,
-	HAS_FAILED
+	HAS_FAILED,
+	AT_LEAST,
+	LESS_THAN
 };
 
 
@@ -61,8 +65,23 @@ public:
 	inline static const FString HasNumItems = "HasNumItem";
 	inline static const FString QuestReadyToTurnIn = "IsReadyToTurnIn";
 	inline static const FString FailedQuest = "FailedQuest";
+	inline static const FString HasReputation = "HasReputation";
+	inline static const FString HasLessThanReputation = "LessThanReputation";
 };
 
+USTRUCT(BlueprintType)
+struct FStandaloneDialogSequence
+{
+	GENERATED_BODY()
+	
+	/*Level sequence to instantiate and play. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LevelSequence")
+	TSoftObjectPtr<ULevelSequence> LevelSequence;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Dialog")
+	TArray<FText> Subtitles;
+	FStandaloneDialogSequence() {};
+};
 
 /* Dialog Condition data. */
 USTRUCT(BlueprintType)

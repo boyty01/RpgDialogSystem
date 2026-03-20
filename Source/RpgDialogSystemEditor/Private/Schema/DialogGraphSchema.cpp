@@ -76,6 +76,17 @@ void UDialogGraphSchema::GetContextMenuActions(UToolMenu* Menu, UGraphNodeContex
                     UDialogGraphSchema::AddConditionSubNode<UQuestConditionNode>(DialogNode, Graph);
                     })
             );
+
+            Section.AddMenuEntry(
+                "MyGraph_AddReputationCondition",
+                FText::FromString("Add Reputation Condition"),
+                FText::FromString("Adds a decorator/condition to this node"),
+                FSlateIcon(),
+                FExecuteAction::CreateLambda([DialogNode, this]() {
+                    UEdGraph* Graph = DialogNode->GetGraph();
+                    UDialogGraphSchema::AddConditionSubNode<UReputationConditionNode>(DialogNode, Graph);
+                    })
+            );
         }
 
         if (AsInterface->SupportsEventsSubNode())
@@ -112,6 +123,17 @@ void UDialogGraphSchema::GetContextMenuActions(UToolMenu* Menu, UGraphNodeContex
                 FExecuteAction::CreateLambda([DialogNode, this]() {
                     UEdGraph* Graph = DialogNode->GetGraph();
                     UDialogGraphSchema::AddEventSubNode<UDialogQuestEventNode>(DialogNode, Graph);
+                    })
+            );
+
+            Section.AddMenuEntry(
+                "MyGraph_AddReputationEvent",
+                FText::FromString("Add Reputation Event"),
+                FText::FromString("Adds a decorator/condition to this node"),
+                FSlateIcon(),
+                FExecuteAction::CreateLambda([DialogNode, this]() {
+                    UEdGraph* Graph = DialogNode->GetGraph();
+                    UDialogGraphSchema::AddEventSubNode<UDialogReputationEventNode>(DialogNode, Graph);
                     })
             );
 

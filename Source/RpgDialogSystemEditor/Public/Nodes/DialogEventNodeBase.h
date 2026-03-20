@@ -36,7 +36,7 @@ public:
 	UPROPERTY()
 	bool bCanEditValue{ false };
 
-	UPROPERTY(EditAnywhere, meta = (EditCondition = "bCanEditValue", ClampMin = "0"))
+	UPROPERTY(EditAnywhere, meta = (EditCondition = "bCanEditValue"))
 	int Value{ 1 };
 
 	virtual FString GetSerializedString() const { return FString(); };

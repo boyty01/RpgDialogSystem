@@ -6,6 +6,7 @@
 #include "Interface/DialogInterface.h"
 #include "Interface/DialogInventoryInterface.h"
 #include "Interface/DialogQuestInterface.h"
+#include "Interface/DialogReputationInterface.h"
 #include "Script/DialogScriptEventBase.h"
 
 #if WITH_EDITOR
@@ -82,22 +83,27 @@ void UDialogManagerSubsystem::NewSequence(FNpcDialogSequence Sequence)
 			EndCurrentDialog();
 			return;
 		}
-		
+
 		UDialogTree* ActiveTree = Comp->GetDialogTree();
 		if (!ActiveTree)
 		{
 			EndCurrentDialog();
 			return;
 		}
-
 		TArray<FDialogEventData> Events;
 		for (auto& EventId : Sequence.TriggeredEvents)
 		{
-			check(ActiveTree->Events.Contains(EventId));
-
-			Events.Add(*ActiveTree->Events.Find(EventId));
+			FDialogEventData* EventPtr = ActiveTree->Events.Find(EventId);
+			if (!EventPtr)
+			{
+				UE_LOG(LogDialogManagerSubsystem, Warning, TEXT("NewSequence: TriggeredEvent GUID not found in DialogTree, skipping."));
+				continue;
+			}
+			Events.Add(*EventPtr);
 		}
 		HandleEventData(Events);
+
+
 		OnNewSequenceDelegate.Broadcast(Sequence);
 	}
 }
@@ -114,6 +120,7 @@ void UDialogManagerSubsystem::SequenceFinished(FNpcDialogSequence sequence)
 	{
 		IDialogInterface::Execute_DialogSequenceEnded(ActiveDialogNPC, sequence);
 	}
+
 
 	OnSequenceFinishedDelegate.Broadcast(sequence);
 }
@@ -182,9 +189,13 @@ void UDialogManagerSubsystem::SelectDialogChoice(FDialogChoice Choice)
 
 	for (auto& Id : Choice.TriggeredEvents)
 	{
-		check(Tree->Events.Contains(Id));
-
-		Events.Add(*Tree->Events.Find(Id));
+		FDialogEventData* EventPtr = Tree->Events.Find(Id);
+		if (!EventPtr)
+		{
+			UE_LOG(LogDialogManagerSubsystem, Warning, TEXT("SelectDialogChoice: TriggeredEvent GUID not found in DialogTree, skipping."));
+			continue;
+		}
+		Events.Add(*EventPtr);
 	}
 
 	HandleEventData(Events);
@@ -264,10 +275,16 @@ void UDialogManagerSubsystem::HandleEventData(const TArray<FDialogEventData>& Ev
 			HandleInventoryEventData(Pawn, Event);
 			break;
 		}
-		case EDialogSystemTarget::SCRIPT :
+		case EDialogSystemTarget::SCRIPT:
+		{
 			HandleCustomEventData(ActiveDialogNPC, Event);
 			break;
-		
+		}
+		case EDialogSystemTarget::REPUTATION :
+		{
+			HandleReputationEventData(Pawn, Event);
+			break;
+		}
 		default:
 			break;
 		}
@@ -347,6 +364,12 @@ void UDialogManagerSubsystem::HandleCustomEventData(AActor* InvokingActor, const
 		SpawnScriptEvent(InvokingActor, Event.ScriptClass);
 		return;
 	}
+}
+
+void UDialogManagerSubsystem::HandleReputationEventData(AActor*TargetPawn, const FDialogEventData& Event)
+{
+	if (TargetPawn->Implements<UDialogReputationInterface>())
+		IDialogReputationInterface::Execute_ModifyReputation(TargetPawn, Event.DataId, Event.Value);
 }
 
 bool UDialogManagerSubsystem::GetPlayerPawnInterfaced(APawn*& OutPawn)

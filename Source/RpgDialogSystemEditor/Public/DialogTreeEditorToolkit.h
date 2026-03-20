@@ -69,6 +69,8 @@ private:
 	void OnNodeDeletedFromGraph(const FGuid& Id);
 	FDelegateHandle OnSelectedNode;
 	void OnNodeSelected(UEdGraphNode* Node);
+	FDelegateHandle PreSaveDelegateHandle;
+	void OnObjectPreSave(UObject* Object, FObjectPreSaveContext SaveContext);
 
 	UDialogTree* DialogTree;
 	TSharedPtr<IDetailsView> DetailsView;

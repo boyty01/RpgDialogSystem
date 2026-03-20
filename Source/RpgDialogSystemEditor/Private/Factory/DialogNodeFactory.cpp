@@ -14,6 +14,8 @@
 #include "Nodes/DialogStateEventNode.h"
 #include "Nodes/DialogCommentNode.h"
 #include "Nodes/DialogCustomEventNode.h"
+#include "Nodes/DialogReputationEventNode.h"
+#include "Nodes/ReputationConditionNode.h"
 #include "Slate/DialogConditionNodeStyle.h"
 #include "Slate/DialogEventNodeStyle.h"
 
@@ -70,5 +72,15 @@ TSharedPtr<SGraphNode> FDialogNodeFactory::CreateNode(UEdGraphNode* InNode) cons
     {
         return SNew(SDialogEventNodeStyle).GraphNode(CustomEventNode);
 	}
+
+    if(UDialogReputationEventNode* ReputationEventNode = Cast<UDialogReputationEventNode>(InNode))
+    {
+        return SNew(SDialogEventNodeStyle).GraphNode(ReputationEventNode);
+	}
+
+    if (UReputationConditionNode* ReputationConditionNode = Cast<UReputationConditionNode>(InNode))
+    {
+		return SNew(SDialogConditionsNodeStyle).GraphNode(ReputationConditionNode);
+    }
     return nullptr;
 }
